@@ -17,8 +17,10 @@
  * 1000 - Reserve - 187.878ms
  * 1000 - // + QuotientSqr - 166.364ms
  * 1000 - // + Vector class fixes - 152.871ms
- * 1000 - // + Multithreading - 39.4286ms
+ * 1000 - Force resolution in tree - 120.912ms
+ * 1000 - // + Hierarchical pseudos - 89.0132ms
 */
+
 float cameraAngle = 0.0f;
 const float cameraRadius = 1000.0f;
 void renderParticles(const std::vector<std::shared_ptr<Particle>> &particles) {
@@ -83,29 +85,11 @@ void applyGravitationalForce(std::shared_ptr<Particle> p1, std::shared_ptr<Parti
     p2->impulse(norm * -force);
 }
 
-void applyGravitationalForce(std::shared_ptr<Particle> &p, const OctTree &tree, int reserveSize) {
+void applyGravitationalForce(std::shared_ptr<Particle> &p, const OctTree &tree) {
     constexpr float theta = 0.2;
-    std::vector<const OctTree *> nodes;
-    nodes.reserve(reserveSize); // Reserve space based on O(n log n)
-    tree.recurseToTargets(p->getPosition(), theta, nodes);
-    for (const auto *node: nodes) {
-        PsuedoParticle psuedoParticle = node->getPsuedoParticle();
-        fVector3 direction = psuedoParticle.position - p->getPosition();
-        float d2 = fVector3::magnitudeSquare(direction);
-        if (d2 > 1) {
-            fVector3 norm = fVector3::norm(direction);
-            float force = 10.0f * p->getMass() * psuedoParticle.mass / (d2 + 1);
-            p->impulse(norm * force);
-        }
-    }
+    tree.resolveForce(p, theta);
 }
 
-// Function to apply gravitational force in parallel
-void applyGravitationalForceParallel(std::vector<std::shared_ptr<Particle>> &particles, const OctTree &tree, int reserveSize, int start, int end) {
-    for (int i = start; i < end; ++i) {
-        applyGravitationalForce(particles[i], tree, reserveSize);
-    }
-}
 
 
 
@@ -179,7 +163,7 @@ int main() {
 
 
         for (int i = 0; i < particleCount; ++i) {
-            applyGravitationalForce(particles[i], tree, reserveSize);
+            applyGravitationalForce(particles[i], tree);
         }
 
         auto forceEnd = std::chrono::high_resolution_clock::now();
@@ -191,7 +175,7 @@ int main() {
         updateCamera();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         renderParticles(particles);
-        //tree.drawOutline();
+        tree.drawOutline();
 
         glfwSwapBuffers(window);
         glfwPollEvents();

@@ -21,14 +21,16 @@ void OctTree::computePsuedo() const {
         }
     }
 
-    PsuedoParticle total = {fVector3::null(), 0};
+    PsuedoParticle total = {fVector3(), 0};
 
     for (const auto &psuedo: consideredPsuedos) {
         total.position += psuedo.position * psuedo.mass;
         total.mass += psuedo.mass;
     }
 
-    total.position /= total.mass;
+    if (total.mass > 0) {
+        total.position /= total.mass;
+    }
 
     psuedo_ = total;
 }
@@ -41,15 +43,27 @@ PsuedoParticle OctTree::getPsuedoParticle() const {
 }
 
 
-void OctTree::recurseToTargets(const fVector3 &point, float theta, std::vector<const OctTree *> &validNodes) const {
-    float quotientSquare = this->quotientSquare(point);
-    if (!divided || quotientSquare < theta * theta) {
-        validNodes.emplace_back(this);
+void OctTree::resolveForce(std::shared_ptr<Particle> p, float theta) const {
+
+    if (!divided && particles.empty()) {
         return;
     }
 
-    for (const auto &child: children) {
-        child->recurseToTargets(point, theta, validNodes);
+    float quotientSquare = this->quotientSquare(p->getPosition());
+    if (quotientSquare < theta * theta) {
+        PsuedoParticle psuedo = getPsuedoParticle();
+        fVector3 direction = psuedo.position - p->getPosition();
+        float d2 = fVector3::magnitudeSquare(direction);
+        fVector3 norm = fVector3::norm(direction);
+        float force = 10.0f * p->getMass() * psuedo.mass / (d2 + 1);
+        p->impulse(norm * force);
+        return;
+    }
+
+    if (divided) {
+        for (const auto &child: children) {
+            child->resolveForce(p, theta);
+        }
     }
 }
 
@@ -57,7 +71,7 @@ void OctTree::drawOutline() const {
     glEnable(GL_BLEND); // Enable blending
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Set the blend function
 
-    glColor4f(1.0f, 0.0f, 0.0f, 0.2f); // Set color to red with full opacity
+    glColor4f(1.0f, 0.0f, 0.0f, 0.1f); // Set color to red with full opacity
     glBegin(GL_LINES); // Start drawing lines
 
     // Draw the outline of the node

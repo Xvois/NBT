@@ -142,8 +142,8 @@ public:
     }
 
 
-    // Improved recurseToTargets: Pass vector by reference to avoid copies
-    void recurseToTargets(const fVector3& point, float theta, std::vector<const OctTree*>& validNodes) const;
+    // Resolve the force acting on a particle
+    void resolveForce(std::shared_ptr<Particle> p, float theta) const;
 
 
     void drawOutline() const; // Draw the node

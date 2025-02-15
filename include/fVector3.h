@@ -20,6 +20,10 @@ public:
 
     // Operators
 
+    bool operator==(const fVector3& v) {
+        return this->x == v.x && this->y == v.y && this->z == v.z;
+    };
+
     fVector3 &operator*=(float scaler) {
         x *= scaler;
         y *= scaler;
@@ -81,10 +85,6 @@ public:
 
     // Declare static variable (no definition here)
     static const fVector3 NullVector;
-
-    static const fVector3 &null() {
-        return NullVector;
-    }
 };
 
 
