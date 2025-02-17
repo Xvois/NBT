@@ -8,7 +8,7 @@
 
 /// A struct to represent an imaginary particle that is used to calculate the gravitational force
 /// in a tree structure.
-struct PsuedoParticle {
+struct PseudoParticle {
     fVector3 position;
     int mass;
 };

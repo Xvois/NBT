@@ -14,5 +14,5 @@ void Particle::zeroAcceleration() {
 }
 
 void Particle::impulse(const fVector3 force) {
-    acceleration += force;
+    acceleration += force / static_cast<float>(mass);
 }

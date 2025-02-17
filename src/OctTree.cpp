@@ -6,63 +6,71 @@
 #include "../include/OctTree.h"
 
 #include <float.h>
+#include <GL/glew.h>
 
-
-void OctTree::computePsuedo() const {
-    std::vector<PsuedoParticle> consideredPsuedos;
+void OctTree::computePseudo() const {
+    std::vector<PseudoParticle> consideredPseudos;
 
     if (divided) {
         for (const auto &child: children) {
-            consideredPsuedos.push_back(child->getPsuedoParticle());
-        }
-    } else {
-        for (const auto &particle: particles) {
-            consideredPsuedos.push_back({particle->getPosition(), particle->getMass()});
+            PseudoParticle childPsuedo = child->getPseudoParticle();
+            if (childPsuedo.mass > 0) {
+                consideredPseudos.push_back(childPsuedo);
+            }
         }
     }
 
-    PsuedoParticle total = {fVector3(), 0};
+    if (particle) {
+        consideredPseudos.push_back({particle->getPosition(), particle->getMass()});
+    }
 
-    for (const auto &psuedo: consideredPsuedos) {
-        total.position += psuedo.position * psuedo.mass;
+    PseudoParticle total = {fVector3::NullVector, 0};
+
+    for (const auto &psuedo: consideredPseudos) {
+        total.position += psuedo.position * static_cast<float>(psuedo.mass);
         total.mass += psuedo.mass;
     }
 
     if (total.mass > 0) {
-        total.position /= total.mass;
+        total.position /= static_cast<float>(total.mass);
     }
 
-    psuedo_ = total;
+    pseudo_ = total;
 }
 
-PsuedoParticle OctTree::getPsuedoParticle() const {
-    if (psuedo_.mass == 0 && psuedo_.position == fVector3::NullVector) {
-        computePsuedo();
+PseudoParticle OctTree::getPseudoParticle() const {
+    if (pseudo_.mass == 0 && pseudo_.position == fVector3::NullVector) {
+        computePseudo();
     }
-    return psuedo_;
+    return pseudo_;
 }
 
 
-void OctTree::resolveForce(std::shared_ptr<Particle> p, float theta) const {
-
-    if (!divided && particles.empty()) {
-        return;
-    }
-
+void OctTree::resolveForce(const std::shared_ptr<Particle>& p, float theta) const {
     float quotientSquare = this->quotientSquare(p->getPosition());
+
     if (quotientSquare < theta * theta) {
-        PsuedoParticle psuedo = getPsuedoParticle();
-        fVector3 direction = psuedo.position - p->getPosition();
+        // This is a valid approximation
+        fVector3 direction = pseudo_.position - p->getPosition();
         float d2 = fVector3::magnitudeSquare(direction);
         fVector3 norm = fVector3::norm(direction);
-        float force = 10.0f * p->getMass() * psuedo.mass / (d2 + 1);
-        p->impulse(norm * force);
-        return;
-    }
-
-    if (divided) {
+        if (d2 > 0.1) {
+            float force = 10.0f * static_cast<float>(p->getMass()) * static_cast<float>(pseudo_.mass) / (d2 + 1);
+            p->impulse(norm * force);
+        }
+    } else if (divided) {
+        // Not a valid approximation, consider children
         for (const auto &child: children) {
             child->resolveForce(p, theta);
+        }
+    } else if (particle) {
+        // Not a valid approximation, but best we can do
+        fVector3 direction = particle->getPosition() - p->getPosition();
+        float d2 = fVector3::magnitudeSquare(direction);
+        fVector3 norm = fVector3::norm(direction);
+        if (d2 > 0.1) {
+            float force = 10.0f * static_cast<float>(p->getMass()) * static_cast<float>(particle->getMass()) / (d2 + 1);
+            p->impulse(norm * force);
         }
     }
 }

@@ -6,7 +6,7 @@
 #include <chrono>
 #include <thread>
 
-#define SCALE 1000
+#define SCALE 1250
 
 #include "Particle.h"
 #include "OctTree.h"
@@ -21,99 +21,85 @@
  * 1000 - // + Hierarchical pseudos - 89.0132ms
 */
 
-float cameraAngle = 0.0f;
-const float cameraRadius = 1000.0f;
-void renderParticles(const std::vector<std::shared_ptr<Particle>> &particles) {
-    glEnable(GL_BLEND); // Enable blending
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Set the blend function
+namespace Graphics {
+    float cameraAngle = 0.0f;
+    float cameraRadius = 200.0f;
 
-    glBegin(GL_POINTS);
-    for (size_t i = 0; i < particles.size(); ++i) {
-        if (i == 0) {
-            glColor4f(0.0f, 0.0f, 1.0f, 0.5f); // Set color to blue with transparency for the first particle
-        } else {
-            glColor4f(1.0f, 1.0f, 1.0f, 0.5f); // Set color to white with transparency for the rest
+    void renderParticles(const std::vector<std::shared_ptr<Particle>> &particles) {
+        glEnable(GL_BLEND); // Enable blending
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Set the blend function
+
+        for (size_t i = 0; i < particles.size(); ++i) {
+            if (i == 0) {
+                glColor4f(0.0f, 0.0f, 1.0f, 0.5f); // Set color to blue with transparency for the first particle
+            } else {
+                glColor4f(1.0f, 1.0f, 1.0f, 0.5f); // Set color to white with transparency for the rest
+            }
+            fVector3 pos = particles[i]->getPosition();
+            float size = std::sqrt(particles[i]->getMass());
+            glPointSize(size);
+            glBegin(GL_POINTS);
+            glVertex3f(pos.x, pos.y, pos.z);
+            glEnd();
         }
-        fVector3 pos = particles[i]->getPosition();
-        glVertex3f(pos.x, pos.y, pos.z);
-    }
-    glEnd();
 
-    glDisable(GL_BLEND); // Disable blending
+        glDisable(GL_BLEND); // Disable blending
+    }
+
+    GLFWwindow *initGraphics() {
+        if (!glfwInit()) {
+            std::cerr << "Failed to initialize GLFW" << std::endl;
+            return nullptr;
+        }
+
+        GLFWwindow *window = glfwCreateWindow(800, 600, "Particle Simulation", nullptr, nullptr);
+        if (!window) {
+            std::cerr << "Failed to create GLFW window" << std::endl;
+            glfwTerminate();
+            return nullptr;
+        }
+
+        glfwMakeContextCurrent(window);
+        glewExperimental = GL_TRUE;
+        if (glewInit() != GLEW_OK) {
+            std::cerr << "Failed to initialize GLEW" << std::endl;
+            return nullptr;
+        }
+
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
+        glPointSize(1.0f);
+        glEnable(GL_POINT_SMOOTH);
+        glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
+
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        glOrtho(-2000.0, 2000.0, -2000.0, 2000.0, -2000.0, 2000.0); // Adjusted to see further out
+        glMatrixMode(GL_MODELVIEW);
+
+        return window;
+    }
+
+    void updateCamera() {
+
+        Graphics::cameraAngle += 0.01f; // Adjust the speed of rotation as needed
+
+        float camX = 0.25f * Graphics::cameraRadius * cos(cameraAngle);
+        float camZ = 0.25f * Graphics::cameraRadius * sin(cameraAngle);
+        float camY = 0.25f * Graphics::cameraRadius * sin(Graphics::cameraAngle); // Slightly tilt the camera
+        glLoadIdentity();
+        gluLookAt(camX, camY, camZ, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+    }
 }
 
-GLFWwindow *initGraphics() {
-    if (!glfwInit()) {
-        std::cerr << "Failed to initialize GLFW" << std::endl;
-        return nullptr;
-    }
-
-    GLFWwindow *window = glfwCreateWindow(800, 600, "Particle Simulation", nullptr, nullptr);
-    if (!window) {
-        std::cerr << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return nullptr;
-    }
-
-    glfwMakeContextCurrent(window);
-    glewExperimental = GL_TRUE;
-    if (glewInit() != GLEW_OK) {
-        std::cerr << "Failed to initialize GLEW" << std::endl;
-        return nullptr;
-    }
-
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
-    glPointSize(1.0f);
-    glEnable(GL_POINT_SMOOTH);
-    glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
-
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(-2000.0, 2000.0, -2000.0, 2000.0, -2000.0, 2000.0); // Adjusted to see further out
-    glMatrixMode(GL_MODELVIEW);
-
-    return window;
-}
-
-void applyGravitationalForce(std::shared_ptr<Particle> p1, std::shared_ptr<Particle> p2) {
-    fVector3 direction = p2->getPosition() - p1->getPosition();
-    float d2 = fVector3::magnitudeSquare(direction);
-    fVector3 norm = fVector3::norm(direction);
-    float force = 10.0f * p1->getMass() * p2->getMass() / (d2 + 1);
-    p1->impulse(norm * force);
-    p2->impulse(norm * -force);
-}
 
 void applyGravitationalForce(std::shared_ptr<Particle> &p, const OctTree &tree) {
-    constexpr float theta = 0.2;
+    constexpr float theta = 0.2f;
     tree.resolveForce(p, theta);
 }
 
-
-
-
-void updateCamera() {
-    static float cameraRadius = 1000.0f;
-    static float radiusChange = 10.0f;
-
-    cameraAngle += 0.01f; // Adjust the speed of rotation as needed
-    cameraRadius += radiusChange; // Vary the camera radius
-
-    // Reverse the direction of radius change if it goes out of bounds
-    if (cameraRadius > 1500.0f || cameraRadius < 500.0f) {
-        radiusChange = -radiusChange;
-    }
-
-    float camX = cameraRadius * cos(cameraAngle);
-    float camZ = cameraRadius * sin(cameraAngle);
-    float camY = 0.25 * cameraRadius * sin(cameraAngle / 5); // Slightly tilt the camera
-    glLoadIdentity();
-    gluLookAt(camX, camY, camZ, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
-}
-
 int main() {
-    GLFWwindow *window = initGraphics();
+    GLFWwindow *window = Graphics::initGraphics();
     if (window == nullptr) {
         return -1;
     }
@@ -127,9 +113,6 @@ int main() {
     std::cout << "Enter the number of particles: ";
     std::cin >> particleCount;
 
-    // Tree traversal reserve size
-    int reserveSize = static_cast<int>(0.543 * particleCount * std::log(particleCount));
-
 
     std::vector<std::shared_ptr<Particle> > particles(particleCount);
 
@@ -137,11 +120,20 @@ int main() {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dis(0.0, 1.0);
-    for (int i = 0; i < particleCount; i++) {
-        particles[i] = std::make_shared<Particle>();
-        particles[i]->setPosition(fVector3::random(gen, dis, 500));
-        particles[i]->setVelocity(fVector3::random(gen, dis, 10));
-        particles[i]->setMass(1.0f + dis(gen) * 10.0);
+
+    particles[0] = std::make_shared<Particle>(fVector3(0, 0, 0), fVector3(0, 0, 0), 10000);
+
+    // Orbiting particles
+    for (int i = 1; i < particleCount; i++) {
+        float angle = dis(gen) * 2 * M_PI;
+        float distance = 500 + dis(gen) * 200; // Distance from the center
+        float height = (dis(gen) - 0.5) * 100; // Small height variation
+
+        fVector3 position(distance * cos(angle), height, distance * sin(angle));
+        float speed = std::sqrt(10.0f * static_cast<float>(particles[0]->getMass()) / distance);
+        fVector3 velocity(-speed * sin(angle), 0, speed * cos(angle));
+
+        particles[i] = std::make_shared<Particle>(position, velocity, 1.0f);
     }
 
     while (!glfwWindowShouldClose(window)) {
@@ -161,8 +153,7 @@ int main() {
 
         auto forceStart = std::chrono::high_resolution_clock::now();
 
-
-        for (int i = 0; i < particleCount; ++i) {
+        for (int i = 0; i < particleCount; i++) {
             applyGravitationalForce(particles[i], tree);
         }
 
@@ -170,25 +161,21 @@ int main() {
         std::chrono::duration<double> forceElapsed = forceEnd - forceStart;
         sumForceTime += forceElapsed.count();
 
-
-
-        updateCamera();
+        Graphics::updateCamera();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        renderParticles(particles);
-        tree.drawOutline();
+        Graphics::renderParticles(particles);
+        //tree.drawOutline();
 
         glfwSwapBuffers(window);
         glfwPollEvents();
 
         for (int i = 0; i < particleCount; i++) {
-            particles[i]->integrate(0.1f);
+            particles[i]->integrate(0.2f);
             particles[i]->zeroAcceleration();
             fVector3 pos = particles[i]->getPosition();
             if (fVector3::magnitude(pos) > SCALE) {
-
-                std::pair<fVector3, float> closestPlane = tree.closestPlane(pos);
                 // SYSTEM IS SYMMETRIC CENTRED AT 0,0,0
-                particles[i]->setPosition(pos*-1 + closestPlane.first * closestPlane.second);
+                particles[i]->setPosition(pos*-1);
             }
         }
 
