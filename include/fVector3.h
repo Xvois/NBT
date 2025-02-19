@@ -5,8 +5,7 @@
 #include <ctgmath>
 #include <random>
 
-class fVector3 {
-public:
+struct fVector3 {
     float x, y, z;
 
     // Constructors
@@ -20,7 +19,7 @@ public:
 
     // Operators
 
-    bool operator==(const fVector3& v) {
+    bool operator==(const fVector3& v) const {
         return this->x == v.x && this->y == v.y && this->z == v.z;
     };
 
@@ -68,9 +67,6 @@ public:
         return {x / scalar, y / scalar, z / scalar};
     }
 
-    bool operator==(const fVector3 &v) const {
-        return x == v.x && y == v.y && z == v.z;
-    }
 
     // Static methods
     static float magnitude(const fVector3 &v);

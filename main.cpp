@@ -25,7 +25,7 @@ namespace Graphics {
     float cameraAngle = 0.0f;
     float cameraRadius = 200.0f;
 
-    void renderParticles(const std::vector<std::shared_ptr<Particle>> &particles) {
+    void renderParticles(const std::vector<std::shared_ptr<Particle> > &particles) {
         glEnable(GL_BLEND); // Enable blending
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Set the blend function
 
@@ -81,7 +81,6 @@ namespace Graphics {
     }
 
     void updateCamera() {
-
         Graphics::cameraAngle += 0.01f; // Adjust the speed of rotation as needed
 
         float camX = 0.25f * Graphics::cameraRadius * cos(cameraAngle);
@@ -141,7 +140,7 @@ int main() {
         auto start = std::chrono::high_resolution_clock::now();
 
         auto treeStart = std::chrono::high_resolution_clock::now();
-        OctTree tree(fVector3(-SCALE, -SCALE, -SCALE), fVector3(2*SCALE, 2*SCALE, 2*SCALE));
+        OctTree tree(fVector3(-SCALE, -SCALE, -SCALE), fVector3(2 * SCALE, 2 * SCALE, 2 * SCALE));
 
         for (int i = 0; i < particleCount; i++) {
             tree.insert(particles[i]);
@@ -175,14 +174,13 @@ int main() {
             fVector3 pos = particles[i]->getPosition();
             if (fVector3::magnitude(pos) > SCALE) {
                 // SYSTEM IS SYMMETRIC CENTRED AT 0,0,0
-                particles[i]->setPosition(pos*-1);
+                particles[i]->setPosition(pos * -1);
             }
         }
 
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = end - start;
         sumChrono += elapsed.count();
-
     }
 
     std::cout << "Average tree construction time: " << (sumTreeTime / totalIterations) * 1000 << "ms" << std::endl;
