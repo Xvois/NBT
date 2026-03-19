@@ -4,9 +4,12 @@
 
 #include "Particle.h"
 
-void Particle::integrate(const float timeStep) {
-    position = position + velocity * timeStep + acceleration * 0.5f * timeStep * timeStep;
+void Particle::kick(const float timeStep) {
     velocity = velocity + acceleration * timeStep;
+}
+
+void Particle::drift(const float timeStep) {
+    position = position + velocity * timeStep;
 }
 
 void Particle::zeroAcceleration() {

@@ -6,6 +6,7 @@
 #include "../include/OctTree.h"
 
 #include <float.h>
+#include <cmath>
 #include <GL/glew.h>
 
 void OctTree::computePseudo() const {
@@ -47,30 +48,41 @@ PseudoParticle OctTree::getPseudoParticle() const {
 
 
 void OctTree::resolveForce(const std::shared_ptr<Particle>& p, float theta) const {
-    float quotientSquare = this->quotientSquare(p->getPosition());
+    const fVector3 position = p->getPosition();
+    const float thetaSquare = theta * theta;
+    const float quotientSquare = this->quotientSquare(position);
+    const bool containsTarget = contains(position);
 
-    if (quotientSquare < theta * theta) {
-        // This is a valid approximation
-        fVector3 direction = pseudo_.position - p->getPosition();
-        float d2 = fVector3::magnitudeSquare(direction);
-        fVector3 norm = fVector3::norm(direction);
-        if (d2 > 0.1) {
-            float force = 10.0f * static_cast<float>(p->getMass()) * static_cast<float>(pseudo_.mass) / (d2 + 1);
-            p->impulse(norm * force);
+    if (!containsTarget && quotientSquare < thetaSquare) {
+        const PseudoParticle pseudo = getPseudoParticle();
+        const fVector3 direction = pseudo.position - position;
+        const float d2 = fVector3::magnitudeSquare(direction);
+        if (d2 > 0.0f && pseudo.mass > 0) {
+            const float softened = d2 + Physics::SofteningSquared;
+            const float invDistance = 1.0f / std::sqrt(softened);
+            const float invDistanceCubed = invDistance * invDistance * invDistance;
+            const float scale = Physics::GravityConstant * static_cast<float>(p->getMass()) * static_cast<float>(pseudo.mass) * invDistanceCubed;
+            p->impulse(direction * scale);
         }
-    } else if (divided) {
-        // Not a valid approximation, consider children
+        return;
+    }
+
+    if (divided) {
         for (const auto &child: children) {
             child->resolveForce(p, theta);
         }
-    } else if (particle) {
-        // Not a valid approximation, but best we can do
-        fVector3 direction = particle->getPosition() - p->getPosition();
-        float d2 = fVector3::magnitudeSquare(direction);
-        fVector3 norm = fVector3::norm(direction);
-        if (d2 > 0.1) {
-            float force = 10.0f * static_cast<float>(p->getMass()) * static_cast<float>(particle->getMass()) / (d2 + 1);
-            p->impulse(norm * force);
+        return;
+    }
+
+    if (particle && particle.get() != p.get()) {
+        const fVector3 direction = particle->getPosition() - position;
+        const float d2 = fVector3::magnitudeSquare(direction);
+        if (d2 > 0.0f) {
+            const float softened = d2 + Physics::SofteningSquared;
+            const float invDistance = 1.0f / std::sqrt(softened);
+            const float invDistanceCubed = invDistance * invDistance * invDistance;
+            const float scale = Physics::GravityConstant * static_cast<float>(p->getMass()) * static_cast<float>(particle->getMass()) * invDistanceCubed;
+            p->impulse(direction * scale);
         }
     }
 }

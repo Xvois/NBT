@@ -32,3 +32,11 @@ fVector3 fVector3::random(std::mt19937 &gen, std::uniform_real_distribution<> &d
 
     return fVector3(x, y, z);
 }
+
+fVector3 fVector3::cross(const fVector3 &a, const fVector3 &b) {
+    return fVector3(
+        a.y * b.z - a.z * b.y,
+        a.z * b.x - a.x * b.z,
+        a.x * b.y - a.y * b.x
+    );
+}

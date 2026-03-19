@@ -10,6 +10,15 @@
 #include <array>
 #include <vector>
 
+namespace Physics {
+    inline constexpr float GravityConstant = 10.0f;
+    // Runtime-configurable Plummer softening (length squared).
+    // Previously this was an inline constexpr; make it a runtime variable
+    // so the softening length can be driven from CLI/config at startup.
+    extern float SofteningSquared;
+}
+
+
 /// Represents a single node in the octree
 class OctTree {
     fVector3 position; // The position of the node

@@ -52,7 +52,8 @@ public:
         return mass;
     }
 
-    void integrate(float timeStep);
+    void kick(float timeStep);
+    void drift(float timeStep);
     void zeroAcceleration();
     void impulse(fVector3 force);
 };

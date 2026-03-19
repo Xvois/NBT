@@ -77,6 +77,8 @@ struct fVector3 {
 
     static fVector3 norm(const fVector3 &v);
 
+    static fVector3 cross(const fVector3 &a, const fVector3 &b);
+
     static fVector3 random(std::mt19937 &gen, std::uniform_real_distribution<> &dis, float radius);
 
     // Declare static variable (no definition here)
